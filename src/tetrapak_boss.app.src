@@ -1,0 +1,7 @@
+{application, tetrapak_boss, [
+    {description, ""},
+    {vsn, ["0.0"]},
+    {applications, [kernel, stdlib, tetrapak, boss]},
+    {registered, []},
+    {env, []}
+]}.
