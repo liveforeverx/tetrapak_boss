@@ -8,7 +8,11 @@
 -export([appname/0]).
 
 app() ->
-    false.
+    Check = build_app(),
+    {Check, Check}.
+
+build_app() ->
+    filelib:is_dir(tetrapak:path("src/controller")) orelse filelib:is_dir(tetrapak:path("src/model")).
 
 tasks(tasks) ->
     case filelib:is_dir(tetrapak:path("src/controller")) orelse
