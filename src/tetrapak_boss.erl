@@ -7,6 +7,9 @@
 -export([run/2]).
 -export([appname/0]).
 
+-define(LANG_JSON_DIR, tetrapak:path("priv/static/lang")).
+
+
 app() ->
     Check = build_app(),
     {Check, Check}.
@@ -29,7 +32,8 @@ tasks(_) ->
 tasks() ->
     [{"start:dev", "start ChicagoBoss for development"},
      {"build:lang", "build language files"},
-     {"build:erlang", "compile Erlang modules using ChicagoBoss"}].
+     {"build:erlang", "compile Erlang modules using ChicagoBoss"},
+     {"clean:lang", "Remove gettext JSON files"}].
 
 run("start:dev", _) ->
     App = appname(),
@@ -67,6 +71,9 @@ run("build:lang", _) ->
     tetrapak:require("build:erlang"),
     boss_lang:update_po(tetrapak:get("config:appfile:name")),
     done.
+
+run("clean:lang", _) ->
+    tpk_file:delete(?LANG_JSON_DIR);
 
 replace_atom(Atom) ->
     String = atom_to_list(Atom),
