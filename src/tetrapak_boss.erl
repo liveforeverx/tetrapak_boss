@@ -9,7 +9,6 @@
 
 -define(LANG_JSON_DIR, tetrapak:path("priv/static/lang")).
 
-
 app() ->
     Check = build_app(),
     {Check, Check}.
@@ -70,10 +69,10 @@ run("build:erlang", _) ->
 run("build:lang", _) ->
     tetrapak:require("build:erlang"),
     boss_lang:update_po(tetrapak:get("config:appfile:name")),
-    done.
+    done;
 
 run("clean:lang", _) ->
-    tpk_file:delete(?LANG_JSON_DIR);
+    tpk_file:delete(?LANG_JSON_DIR).
 
 replace_atom(Atom) ->
     String = atom_to_list(Atom),
