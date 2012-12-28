@@ -14,11 +14,13 @@ app() ->
     {Check, Check}.
 
 build_app() ->
-    filelib:is_dir(tetrapak:path("src/controller")) orelse filelib:is_dir(tetrapak:path("src/model")).
+    filelib:is_dir(tetrapak:path("src/controller")) orelse
+    filelib:is_dir(tetrapak:path("src/model")) orelse
+    filelib:is_dir(tetrapak:path("src/view")).
+
 
 tasks(tasks) ->
-    case filelib:is_dir(tetrapak:path("src/controller")) orelse
-         filelib:is_dir(tetrapak:path("src/model")) of
+    case build_app() of
         true ->
             [{Cmd, ?MODULE, Description} || {Cmd, Description} <- tasks()];
         false ->
@@ -35,13 +37,16 @@ tasks() ->
      {"clean:lang", "Remove gettext JSON files"}].
 
 run("start:dev", _) ->
-    App = appname(),
     tpk_file:mkdir(tetrapak:path("log")),
-    Config = [{developing_app, App}, {applications, [App]}, {db_host, "localhost"},
-              {db_port, 1978}, {db_adapter, mock}, {log_dir, "log"}, {server, mochiweb},
-              {port, 8001}, {session_adapter, mock}, {session_key, "_boss_session"},
-              {session_exp_time, 525600}],
-    [application:set_env(boss, ConfOption, ConfValue) || {ConfOption, ConfValue} <- Config],
+    Config =
+        case file:consult(filename:join(tetrapak:dir(), "boss.config")) of
+            {ok, RawConfig} ->
+                %% Use enit or Chicago Boss configuration style
+                lists:flatten(RawConfig);
+            {error, enoent} ->
+                [{boss, default_config()}]
+        end,
+    [set_configuration(App, Configuration) || {App, Configuration} <- Config],
     tetrapak:require("tetrapak:startapp"),
     reloader:start(),
     tetrapak:require("shell");
@@ -74,6 +79,27 @@ run("build:lang", _) ->
 run("clean:lang", _) ->
     tpk_file:delete(?LANG_JSON_DIR).
 
+% --------------------------------------------------------------------------------------------------
+% -- helpers
+
+set_configuration(boss, Configuration) ->
+    App = appname(),
+    Config = [{developing_app, App}, {applications, [App]} | Configuration],
+    [application:set_env(boss, ConfOption, ConfValue) || {ConfOption, ConfValue} <- Config];
+set_configuration(App, Config) ->
+    [application:set_env(App, ConfOption, ConfValue) || {ConfOption, ConfValue} <- Config].
+
+default_config() ->
+    [{db_host, "localhost"},
+     {db_port, 1978},
+     {db_adapter, mock},
+     {log_dir, "log"},
+     {server, mochiweb},
+     {port, 8001},
+     {session_adapter, mock},
+     {session_key, "_boss_session"},
+     {session_exp_time, 525600}].
+
 replace_atom(Atom) ->
     String = atom_to_list(Atom),
     replace(String, "_", " ").
@@ -83,7 +109,6 @@ replace(String, [From], [To]) ->
                                  (A, Acc)  -> [A | Acc]
                               end, "", String)).
 
-%output(_Name, [])                           -> ok;
 output(_Name, Modules) when is_list(Modules) ->
     [io:format("Compiled ~s~n", [Module]) || Module <- Modules].
 
