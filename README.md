@@ -12,5 +12,7 @@ Install plugin
 By tetrapak
 
     $ by {plugin_scan, true} tetrapak will detect plugin automaticly for a project
-    $ otherwise add in your <project>/tetrapak folder <taskfile>.erl with -require(tetrapak_boss)
+    $ otherwise add in your <project>/tetrapak/config.ini 
+        [tetrapak]
+        plugins = ["boss"]
 
