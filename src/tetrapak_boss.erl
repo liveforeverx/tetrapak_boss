@@ -44,9 +44,9 @@ run("start:dev", _) ->
                 %% Use enit or Chicago Boss configuration style
                 lists:flatten(RawConfig);
             {error, enoent} ->
-                [{boss, default_config()}]
+                []
         end,
-    [set_configuration(App, Configuration) || {App, Configuration} <- Config],
+    [set_configuration(App, Configuration) || {App, Configuration} <- [{boss, default_config()}] ++ Config],
     tetrapak:require("tetrapak:startapp"),
     reloader:start(),
     tetrapak:require("shell");
