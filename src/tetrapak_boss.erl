@@ -39,7 +39,7 @@ tasks() ->
 run("start:dev", _) ->
     tpk_file:mkdir(tetrapak:path("log")),
     Config =
-        case file:consult(filename:join(tetrapak:dir(), "boss.config")) of
+        case file:consult(filename:join(tetrapak:dir(), "tetrapak/boss.config")) of
             {ok, RawConfig} ->
                 %% Use enit or Chicago Boss configuration style
                 lists:flatten(RawConfig);
@@ -48,28 +48,26 @@ run("start:dev", _) ->
         end,
     [set_configuration(App, Configuration) || {App, Configuration} <- [{boss, default_config()}] ++ Config],
     tetrapak:require("tetrapak:startapp"),
-    reloader:start(),
     tetrapak:require("shell");
 
 run("build:erlang", _) ->
     App = appname(),
     OutDir = tetrapak:path("ebin"),
     tpk_file:mkdir(OutDir),
-
-    %% load the boss reload module
-    reloader:start(),
-    %% put boss into devel mode
-    application:set_env(boss, developing_app, App),
+    set_dev_mode(),
 
     TranslatorPid = boss_translator:start([{application, App}]),
-    case catch boss_load:load_all_modules(App, TranslatorPid, OutDir) of
-        {ok, AllModules} ->
-            [output(replace_atom(Name), Modules) || {Name, Modules} <- AllModules],
-            done;
-        {'EXIT', Error} ->
-            io:format("failed to load: ~p~n", [Error]),
-            tetrapak:fail()
-    end;
+
+    Result = case catch boss_load:load_all_modules(App, TranslatorPid, OutDir) of
+                 {ok, AllModules} ->
+                     [output(replace_atom(Name), Modules) || {Name, Modules} <- AllModules],
+                     done;
+                 {'EXIT', Error} ->
+                     io:format("failed to load: ~p~n", [Error]),
+                     tetrapak:fail()
+             end,
+    unset_dev_mode(),
+    Result;
 
 run("build:lang", _) ->
     tetrapak:require("build:erlang"),
@@ -84,7 +82,7 @@ run("clean:lang", _) ->
 
 set_configuration(boss, Configuration) ->
     App = appname(),
-    Config = [{developing_app, App}, {applications, [App]} | Configuration],
+    Config = [{applications, [App]} | Configuration], %{developing_app, App},
     [application:set_env(boss, ConfOption, ConfValue) || {ConfOption, ConfValue} <- Config];
 set_configuration(App, Config) ->
     [application:set_env(App, ConfOption, ConfValue) || {ConfOption, ConfValue} <- Config].
@@ -116,3 +114,15 @@ appname() ->
     [AppSrc] = filelib:wildcard(filename:join(tetrapak:path("src/"), "*.app.src")),
     Name = filename:basename(AppSrc, ".app.src"),
     list_to_atom(Name).
+
+set_dev_mode() ->
+    %% load the boss reload module
+    reloader:start(),
+    %% put boss into devel mode
+    application:set_env(boss, developing_app, appname()).
+
+unset_dev_mode() ->
+    %% load the boss reload module
+    reloader:stop(),
+    %% put boss into devel mode
+    application:unset_env(boss, developing_app).
