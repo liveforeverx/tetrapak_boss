@@ -96,10 +96,12 @@ run("clean:lang", _) ->
 % -- helpers
 
 set_configuration(boss, Configuration) ->
+    application:load(boss),
     App = appname(),
     Config = [{applications, [App]} | Configuration],
     [application:set_env(boss, ConfOption, ConfValue) || {ConfOption, ConfValue} <- Config];
 set_configuration(App, Config) ->
+    application:load(App),
     [application:set_env(App, ConfOption, ConfValue) || {ConfOption, ConfValue} <- Config].
 
 default_config() ->
