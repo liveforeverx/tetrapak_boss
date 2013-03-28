@@ -56,7 +56,7 @@ run("build:erlang", _) ->
     tpk_file:mkdir(OutDir),
     set_dev_mode(),
 
-    TranslatorPid = boss_translator:start([{application, App}]),
+    {ok, TranslatorPid} = boss_translator_sup:start_link([{application, App}]),
 
     Result = case catch boss_load:load_all_modules(App, TranslatorPid, OutDir) of
                  {ok, AllModules} ->
@@ -66,7 +66,7 @@ run("build:erlang", _) ->
                      io:format("failed to load: ~p~n", [Error]),
                      tetrapak:fail()
              end,
-    unset_dev_mode(),
+%    unset_dev_mode(),
     Result;
 
 run("build:lang", _) ->
@@ -82,7 +82,7 @@ run("clean:lang", _) ->
 
 set_configuration(boss, Configuration) ->
     App = appname(),
-    Config = [{applications, [App]} | Configuration], %{developing_app, App},
+    Config = [{applications, [App]}, {developing_app, App} | Configuration],
     [application:set_env(boss, ConfOption, ConfValue) || {ConfOption, ConfValue} <- Config];
 set_configuration(App, Config) ->
     [application:set_env(App, ConfOption, ConfValue) || {ConfOption, ConfValue} <- Config].
