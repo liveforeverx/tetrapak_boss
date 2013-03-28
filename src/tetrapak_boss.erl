@@ -4,11 +4,13 @@
 -export([app/0, tasks/1]).
 
 -behaviour(tetrapak_task).
--export([run/2]).
+-export([check/1, run/2]).
 -export([appname/0]).
 
 -define(LANG_JSON_DIR, tetrapak:path("priv/static/lang")).
-
+-define(LANG_PO_DIR, tetrapak:path("translations")).
+% --------------------------------------------------------------------------------------------------
+% -- tetrapak callbacks
 app() ->
     Check = build_app(),
     {Check, Check}.
@@ -36,7 +38,14 @@ tasks() ->
      {"build:erlang", "compile Erlang modules using ChicagoBoss"},
      {"clean:lang", "Remove gettext JSON files"}].
 
+% --------------------------------------------------------------------------------------------------
+% -- Plugin tasks
+
+check("build:lang") ->
+    tpk_util:check_files_mtime(?LANG_PO_DIR, "po", ?LANG_JSON_DIR, "json").
+
 run("start:dev", _) ->
+    io:format(user, "info: ~p~n", [ok]),
     tpk_file:mkdir(tetrapak:path("log")),
     Config =
         case file:consult(filename:join(tetrapak:dir(), "tetrapak/boss.config")) of
@@ -53,10 +62,15 @@ run("start:dev", _) ->
 run("build:erlang", _) ->
     App = appname(),
     OutDir = tetrapak:path("ebin"),
-    tpk_file:mkdir(OutDir),
-    set_dev_mode(),
 
-    {ok, TranslatorPid} = boss_translator_sup:start_link([{application, App}]),
+    set_dev_mode(App),
+
+    {ok, BossVersion} = application:get_key(boss, vsn),
+    case BossVersion > "0.8.1" of
+        true -> {ok, TranslatorPid} = boss_translator_sup:start_link([{application, App}]);
+        % Support for old boss versions
+        false -> TranslatorPid = boss_translator:start([{application, App}])
+    end,
 
     Result = case catch boss_load:load_all_modules(App, TranslatorPid, OutDir) of
                  {ok, AllModules} ->
@@ -66,11 +80,12 @@ run("build:erlang", _) ->
                      io:format("failed to load: ~p~n", [Error]),
                      tetrapak:fail()
              end,
-%    unset_dev_mode(),
+    unset_dev_mode(),
     Result;
 
 run("build:lang", _) ->
     tetrapak:require("build:erlang"),
+    tpk_file:mkdir(tetrapak:path("priv/lang")),
     boss_lang:update_po(tetrapak:get("config:appfile:name")),
     done;
 
@@ -82,7 +97,7 @@ run("clean:lang", _) ->
 
 set_configuration(boss, Configuration) ->
     App = appname(),
-    Config = [{applications, [App]}, {developing_app, App} | Configuration],
+    Config = [{applications, [App]} | Configuration],
     [application:set_env(boss, ConfOption, ConfValue) || {ConfOption, ConfValue} <- Config];
 set_configuration(App, Config) ->
     [application:set_env(App, ConfOption, ConfValue) || {ConfOption, ConfValue} <- Config].
@@ -115,11 +130,12 @@ appname() ->
     Name = filename:basename(AppSrc, ".app.src"),
     list_to_atom(Name).
 
-set_dev_mode() ->
+set_dev_mode(App) ->
+    application:load(boss),
     %% load the boss reload module
     reloader:start(),
     %% put boss into devel mode
-    application:set_env(boss, developing_app, appname()).
+    application:set_env(boss, developing_app, App).
 
 unset_dev_mode() ->
     %% load the boss reload module
