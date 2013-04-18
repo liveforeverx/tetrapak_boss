@@ -159,7 +159,7 @@ unset_dev_mode() ->
     application:unset_env(boss, developing_app).
 
 add_configuration(AppName, Keys) ->
-    Update = lists:zip([controller_modules, model_models], [modules(Dir) || Dir <- [?CONT_DIR, ?MODEL_DIR]]),
+    Update = lists:zip([controller_modules, model_modules], [modules(Dir) || Dir <- [?CONT_DIR, ?MODEL_DIR]]),
     ToUpdate = [{view_modules, template_modules(AppName)} | Update],
     Enviroments = proplists:get_value(env, Keys, []),
     NewEnviroments = lists:foldl(fun({Key, Value}, Envs) ->
